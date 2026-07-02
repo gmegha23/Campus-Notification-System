@@ -257,3 +257,92 @@ db.notifications.find({
     type: "Placement"
 })
 ```
+# Stage 3
+
+## Query Given
+
+```sql
+SELECT * FROM notifications
+WHERE studentID = 1042 AND isRead = false
+ORDER BY createdAt ASC;
+```
+
+### Is the Query Accurate?
+
+Yes. The query correctly returns all unread notifications for student **1042** and sorts them by the notification creation time in ascending order.
+
+---
+
+## Why is the Query Slow?
+
+The database contains:
+
+- 50,000 students
+- 5,000,000 notifications
+
+The query becomes slow because:
+
+- It scans a large number of records.
+- There may be no index on `studentID`, `isRead`, or `createdAt`.
+- `SELECT *` retrieves all columns, even if only a few are needed.
+
+---
+
+## Improvements
+
+Use only the required columns instead of `SELECT *`.
+
+```sql
+SELECT notificationID, title, message, createdAt
+FROM notifications
+WHERE studentID = 1042
+AND isRead = false
+ORDER BY createdAt ASC;
+```
+
+Create a composite index on the columns used in the query.
+
+```sql
+CREATE INDEX idx_student_read_created
+ON notifications(studentID, isRead, createdAt);
+```
+
+---
+
+## Computation Cost
+
+- Without an index: **O(n)** (Full Table Scan)
+- With a composite index: **O(log n)**
+
+The indexed query is much faster because the database can directly locate the required records.
+
+---
+
+## Should We Add Indexes on Every Column?
+
+**No.**
+
+Adding indexes on every column is not a good idea because:
+
+- It increases storage space.
+- INSERT, UPDATE, and DELETE operations become slower.
+- Many indexes are never used.
+
+Indexes should be created only on columns that are frequently used in:
+
+- WHERE
+- ORDER BY
+- JOIN
+
+---
+
+## Query to Find Students Who Received Placement Notifications in the Last 7 Days
+
+```sql
+SELECT DISTINCT studentID
+FROM notifications
+WHERE notificationType = 'Placement'
+AND createdAt >= NOW() - INTERVAL 7 DAY;
+```
+
+This query returns all unique students who received a placement notification during the last seven days.
